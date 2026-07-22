@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TikTok Live Game</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #1a1a1a; 
+            color: white; 
+            font-family: sans-serif; 
+            touch-action: none; /* Prevents accidental swiping on mobile */
+        }
+        canvas { 
+            display: block; 
+        }
+        #ui { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            font-size: 20px; 
+            font-weight: bold; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">Waiting for gifts...</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const ui = document.getElementById('ui');
+
+        // Size canvas to fit your phone screen perfectly
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        let fallingObjects = [];
+
+        // Listen for gifts from the server
+        socket.on('tiktok-gift', (data) => {
+            ui.innerText = `Last Event: ${data.user} sent ${data.amount}x ${data.giftName}`;
+            
+            // Spawn an object for every gift in the combo
+            for(let i = 0; i < data.amount; i++) {
+                fallingObjects.push({
+                    x: Math.random() * canvas.width,
+                    y: -50, // Start slightly above screen
+                    size: Math.random() * 20 + 20,
+                    speed: Math.random() * 5 + 3,
+                    color: `hsl(${Math.random() * 360}, 100%, 60%)`
+                });
+            }
+        });
+
+        // The Game Loop
+        function draw() {
+            // Clear the screen for the next frame
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (let i = 0; i < fallingObjects.length; i++) {
+                let obj = fallingObjects[i];
+                obj.y += obj.speed; // Move down
+                
+                // Draw a circle
+                ctx.fillStyle = obj.color;
+                ctx.beginPath();
+                ctx.arc(obj.x, obj.y, obj.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Clean up objects that have fallen off the screen to save phone memory
+            fallingObjects = fallingObjects.filter(obj => obj.y < canvas.height + 50);
+
+            // Run next frame
+            requestAnimationFrame(draw);
+        }
+        
+        // Start the loop
+        draw();
+    </script>
+</body>
+</html>
